@@ -56,6 +56,8 @@ input:focus{box-shadow:0 0 0 4px rgba(253,181,21,.45)}
 .skill .tick{margin-left:auto;width:26px;height:26px;border-radius:50%;border:2.5px solid var(--ink);flex:none;display:grid;place-items:center;font:900 14px Nunito,system-ui,sans-serif}
 .skill[aria-pressed=true] .tick{background:var(--ink);color:#fff}
 .count{font-size:13px;color:var(--grey-70);margin:10px 0 0}
+.other-in{margin-top:-2px;padding:0 4px}
+.other-in[hidden]{display:none}
 /* show */
 .choice{display:flex;gap:14px;align-items:center;text-align:left;border:var(--line);border-radius:18px;background:#fff;padding:14px;cursor:pointer;font:inherit;color:inherit;margin-bottom:10px;box-shadow:var(--shadow)}
 .choice b{display:block;font-weight:900;font-size:17px}
@@ -117,6 +119,7 @@ input:focus{box-shadow:0 0 0 4px rgba(253,181,21,.45)}
     <h1>What can you help with?</h1>
     <p class="lead">Pick up to two. They show on your bear’s tag on the wall.</p>
     <div class="skills" id="skills"></div>
+    <div class="other-in" id="otherBox" hidden><label class="f" for="otherTxt">What can you help with?</label><input id="otherTxt" type="text" maxlength="24" placeholder="Snacks, tampons, a ride home…" autocomplete="off"></div>
     <p class="count" id="skCount">0 of 2 picked</p>
     <div class="spacer"></div>
     <button class="btn" type="button" id="toShow" disabled>Next</button>
@@ -156,7 +159,9 @@ const $=id=>document.getElementById(id);
 const B=window.BEAR,O=B.OPTIONS;
 const store={get:k=>{try{return JSON.parse(localStorage.getItem('blo-bear-'+k))}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem('blo-bear-'+k,JSON.stringify(v))}catch(e){}},del:k=>{try{localStorage.removeItem('blo-bear-'+k)}catch(e){}}};
 const ORDER=['s-email','s-bear','s-skills','s-show','s-done'];
-let me=store.get('me')||{id:null,n:'',bear:'polar',hat:'bucket',neck:'scarf',face:'happy',k:[],show:true,dur:'3',until:0};
+let me=store.get('me')||{id:null,n:'',bear:'polar',hat:'bucket',neck:'scarf',face:'happy',k:[],o:'',show:true,dur:'3',until:0};
+const ALL=[...B.SKILLS,B.OTHER],skillOf=id=>ALL.find(s=>s.id===id);
+const skLabel=id=>id==='other'&&me.o?me.o:skillOf(id).label;
 let tab='bear';
 
 function show(id){ORDER.forEach(s=>$(s).hidden=s!==id);const i=Math.min(ORDER.indexOf(id),3);document.querySelectorAll('.steps span').forEach((s,j)=>s.classList.toggle('on',j<=i));window.scrollTo(0,0)}
@@ -168,8 +173,8 @@ let up=0;
 if(window.BLO&&window.mqtt){BLO.connect({subscribe:false,onStatus:n=>{up=n;$('net').classList.toggle('on',!!n);$('netTxt').textContent=n?'Live · connected to the wall':'Connecting to the wall…';if(n&&me.id&&me.until>Date.now()&&!$('s-done').hidden)publish()}})}
 else $('netTxt').textContent='Offline · can’t reach the wall';
 function untilFor(d){const now=new Date();if(d==='day'){const e=new Date(now);e.setHours(23,59,0,0);return e.getTime()}return now.getTime()+(+d)*3600e3}
-function publish(){const kinds=me.k.map(id=>B.SKILLS.find(s=>s.id===id).kind);
-  BLO.publish(me.id,{v:2,n:me.n,k:kinds,show:!!me.show,until:me.until,ts:Date.now(),bear:{b:me.bear,h:me.hat,nk:me.neck,f:me.face}});store.set('me',me)}
+function publish(){const kinds=me.k.map(id=>skillOf(id).kind);
+  BLO.publish(me.id,{v:2,n:me.n,k:kinds,o:me.k.includes('other')?(me.o||'').slice(0,24):'',show:!!me.show,until:me.until,ts:Date.now(),bear:{b:me.bear,h:me.hat,nk:me.neck,f:me.face}});store.set('me',me)}
 
 /* 1 · email */
 $('fEmail').addEventListener('submit',e=>{e.preventDefault();const v=$('email').value.trim();
@@ -191,14 +196,18 @@ function renderBear(hop){
 $('toSkills').onclick=()=>{const n=$('nick').value.trim();if(!n){$('nErr').textContent='Pick a nickname so you know it’s you.';return}$('nErr').textContent='';me.n=n.slice(0,14);store.set('me',me);renderSkills();show('s-skills')};
 
 /* 3 · skills */
-const TILE={bike:'#BFE3DA',firstaid:'#E3EDD6',fixit:'#B9D9A4',nert:'#E6E3DC'};
+const TILE={bike:'#BFE3DA',firstaid:'#E3EDD6',fixit:'#B9D9A4',nert:'#E6E3DC',umbrella:'#D7E5F1',charger:'#FFF3D1',other:'#F5F3EE'};
 function renderSkills(){
-  $('skills').innerHTML=B.SKILLS.map(s=>`<button type="button" class="skill" data-id="${s.id}" aria-pressed="${me.k.includes(s.id)}"><span class="ic" style="background:${TILE[s.id]}"><svg viewBox="-14 -14 28 28" width="30" height="30">${B.ICON[s.id]}</svg></span><span><b>${s.label}</b><small>${s.sub}</small></span><span class="tick">${me.k.includes(s.id)?'✓':''}</span></button>`).join('');
-  $('skCount').textContent=`${me.k.length} of 2 picked`;$('toShow').disabled=!me.k.length;
+  $('skills').innerHTML=ALL.map(s=>`<button type="button" class="skill" data-id="${s.id}" aria-pressed="${me.k.includes(s.id)}"><span class="ic" style="background:${TILE[s.id]}"><svg viewBox="-14 -14 28 28" width="30" height="30">${B.ICON[s.id]}</svg></span><span><b>${s.label}</b><small>${s.sub}</small></span><span class="tick">${me.k.includes(s.id)?'✓':''}</span></button>`).join('');
+  $('skCount').textContent=`${me.k.length} of 2 picked`;
+  const hasO=me.k.includes('other');$('otherBox').hidden=!hasO;if(hasO&&$('otherTxt').value!==me.o)$('otherTxt').value=me.o||'';
+  $('toShow').disabled=!me.k.length||(hasO&&!(me.o||'').trim());
 }
 $('skills').onclick=e=>{const b=e.target.closest('.skill');if(!b)return;const id=b.dataset.id;
   if(me.k.includes(id))me.k=me.k.filter(x=>x!==id);else{if(me.k.length>=2)me.k.shift();me.k.push(id)}renderSkills()};
-$('toShow').onclick=()=>{renderShow();show('s-show')};
+$('otherTxt').addEventListener('input',()=>{me.o=$('otherTxt').value.slice(0,24);$('toShow').disabled=!me.k.length||!me.o.trim()});
+$('skills').addEventListener('click',e=>{if(e.target.closest('.skill[data-id="other"]')&&me.k.includes('other'))setTimeout(()=>$('otherTxt').focus(),0)});
+$('toShow').onclick=()=>{me.o=(me.o||'').trim();renderShow();show('s-show')};
 
 /* 4 · show */
 function renderShow(){$('picShow').innerHTML=B.bearPicture(me,62);
@@ -215,7 +224,7 @@ function renderDone(){
   $('picDone').innerHTML=pic(112);$('doneNick').textContent=me.n;
   $('doneTitle').textContent=!live?'You’re on a break':me.show?'You’re on the wall':'You’re helping quietly';
   $('doneUntil').textContent=live?'Until '+hhmm(me.until):'Not showing right now';
-  $('doneChips').innerHTML=me.k.map(id=>`<span class="chip"><svg viewBox="-14 -14 28 28">${B.ICON[id]}</svg>${B.SKILLS.find(s=>s.id===id).label}</span>`).join('');
+  $('doneChips').innerHTML=me.k.map(id=>`<span class="chip"><svg viewBox="-14 -14 28 28">${B.ICON[id]}</svg>${skLabel(id).replace(/</g,'&lt;')}</span>`).join('');
   $('doneStatus').innerHTML=!live?'Your bear is resting.<small>Tap “Back on the wall” whenever you’re around again.</small>':me.show?'Look at the courtyard wall, your bear should walk in within a few seconds.<small>Only your bear and your skills are shown. Never your nickname or email.</small>':'You’re counted on the wall as “helping quietly”.<small>No bear, no nickname. Just +1.</small>';
   $('pause').textContent=live?'Take a break':'Back on the wall';
 }

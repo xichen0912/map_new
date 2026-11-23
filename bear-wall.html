@@ -153,7 +153,7 @@ const NS='http://www.w3.org/2000/svg';
 const svg=document.getElementById('scene');
 const INK='#141414';
 
-const {BASE,ICON,UMB_STYLES,bearSVG,SKILLS}=window.BEAR;
+const {BASE,ICON,UMB_STYLES,bearSVG}=window.BEAR;const SKILLS=[...window.BEAR.SKILLS,window.BEAR.OTHER];
 
 /* ── slots on the plaza: front rows are bigger ── */
 const SLOTS=[
@@ -175,11 +175,13 @@ let PEOPLE=SAMPLE.slice();
 const SAY={
   bike:{any:['I can fix bikes','Flat tire? I have a pump'],rain:['Wet brakes? I can check'],night:['Riding home? Spare lights here'],fog:['Foggy ride? I have a light']},
   firstaid:{any:['I know first aid','Need a bandage?'],rain:['Slipped? I have bandages'],night:['Walking late? I’ll come along'],fog:['I know first aid']},
+  umbrella:{any:['Spare umbrella here','Caught without an umbrella?'],rain:['Borrow my umbrella','Room under my umbrella'],night:['Umbrella if you need one'],fog:['Spare umbrella here']},
+  charger:{any:['Low battery? I have a power bank','Phone dying? Plug in here'],rain:['Phone dying? Plug in here'],night:['Need a charge before you go?'],fog:['Low battery? I have a power bank']},
   nert:{any:['I’m CERT trained','Trained for emergencies'],rain:['Stay off the slick steps'],night:['Here if anything goes wrong'],fog:['I’m CERT trained']},
   fixit:{any:['I can fix things','Wobbly chair? I have tools'],rain:['Spare umbrella here'],night:['Still in studio, ask me'],fog:['Need a hand?']},
   mood:{morning:['Morning, Jacobs','Coffee run, need anything?'],day:['Need a hand?'],evening:['Heading out soon, need a hand?'],night:['You okay up there?'],rain:['Sharing my umbrella'],cloudy:['Need a hand?'],fog:['Can’t see the bay either'],clear:['I’ve got you']}
 };
-function linesFor(p,t,w){const o=[];for(const s of p.skills){const S=SAY[s];if(!S)continue;o.push(...S.any);if(S[w])o.push(...S[w]);if(t==='night')o.push(...S.night,...S.night)}o.push(...(SAY.mood[t]||[]),...(SAY.mood[w]||[]));return o}
+function linesFor(p,t,w){const o=[];if(p.skills.includes('other')&&p.other)o.push(`I can help with ${p.other}`,`Ask me about ${p.other}`,`I can help with ${p.other}`);for(const s of p.skills){const S=SAY[s];if(!S)continue;o.push(...S.any);if(S[w])o.push(...S[w]);if(t==='night')o.push(...S.night,...S.night)}o.push(...(SAY.mood[t]||[]),...(SAY.mood[w]||[]));return o}
 
 /* palettes: sky stops, facade, glass, plaza, foliage, ambient tint */
 // one hue family per time of day; ramp c0 (lightest) → c4 (darkest)
@@ -480,7 +482,7 @@ function hashPick(id,arr){let h=0;for(const c of id)h=(h*31+c.charCodeAt(0))>>>0
 function isLive(d){return !!(d&&typeof d==='object'&&Array.isArray(d.k)&&d.k.length&&(!d.until||d.until>Date.now()))}
 function toBear(id,d){const b=d.bear||{},O=window.BEAR.OPTIONS;
   const skills=[...new Set(d.k.map(k=>KIND2SKILL[k]).filter(Boolean))].slice(0,2);
-  return {id,live:true,n:String(d.n||'').slice(0,14),bear:O.bear.includes(b.b)?b.b:hashPick(id,O.bear),hat:O.hat.includes(b.h)?b.h:hashPick(id+'h',O.hat),neck:O.neck.includes(b.nk)?b.nk:hashPick(id+'n',O.neck),face:O.face.includes(b.f)?b.f:hashPick(id+'f',O.face),skills:skills.length?skills:['fixit']}}
+  return {id,live:true,n:String(d.n||'').slice(0,14),other:String(d.o||'').trim().slice(0,24),bear:O.bear.includes(b.b)?b.b:hashPick(id,O.bear),hat:O.hat.includes(b.h)?b.h:hashPick(id+'h',O.hat),neck:O.neck.includes(b.nk)?b.nk:hashPick(id+'n',O.neck),face:O.face.includes(b.f)?b.f:hashPick(id+'f',O.face),skills:skills.length?skills:['fixit']}}
 function realPeople(){const shown=[],quiet=[];for(const [id,d] of Object.entries(msgs)){if(!isLive(d))continue;(d.show?shown:quiet).push(toBear(id,d))}return {shown,quiet}}
 function recast(newId){
   const {shown,quiet}=realPeople();
@@ -508,7 +510,7 @@ function onPerson(id,d){
   if(d)msgs[id]=d;else delete msgs[id];
   const now=isLive(d)&&d.show,nowQ=isLive(d)&&!d.show;
   if(isLive(d)){seen.add(id);try{localStorage.setItem('blo-bear-seen',JSON.stringify([...seen].slice(-300)))}catch(e){}}
-  const sk=d&&isLive(d)?toBear(id,d).skills.map(k=>SKLABEL[k]).join(' + '):'',who=String((d||prev||{}).n||'').slice(0,14);
+  const sk=d&&isLive(d)?(b=>b.skills.map(k=>k==='other'&&b.other?b.other:SKLABEL[k]).join(' + '))(toBear(id,d)):'',who=String((d||prev||{}).n||'').slice(0,14);
   if(now&&!was)pushEvent((who||'A new bear')+' checked in · '+sk);
   else if(nowQ&&!wasQ)pushEvent('Someone is helping quietly · '+sk);
   else if((was||wasQ)&&!now&&!nowQ&&was)pushEvent((who||'A bear')+' headed out · thanks for helping');

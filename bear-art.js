@@ -33,6 +33,9 @@ const NECK={
   beads:[[64,160],[71.2,164.9],[78.4,169.4],[85.6,172.9],[92.8,175.2],[100,176],[107.2,175.2],[114.4,172.9],[121.6,169.4],[128.8,164.9],[136,160]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="6" ${st('#fff',INK,3)}/>`).join('')
 };
 const ICON={
+  umbrella:`<path d="M-12 1a12 11 0 0 1 24 0Z" fill="#003262"/><path d="M0 1v8a3.2 3.2 0 0 1-6.4 0" fill="none" stroke="#003262" stroke-width="2.6" stroke-linecap="round"/><path d="M0-10v-2" stroke="#003262" stroke-width="2.6" stroke-linecap="round"/>`,
+  charger:`<rect x="-7.5" y="-11" width="15" height="22" rx="3.5" fill="none" stroke="#003262" stroke-width="2.6"/><path d="M1.5-6.5-3.5 1h4l-1.5 5.5L4-1.5H0l1.5-5z" fill="#003262"/>`,
+  other:`<path d="M0-11.5l3.3 6.7 7.4 1.1-5.4 5.2 1.3 7.3L0 5.3l-6.6 3.5 1.3-7.3-5.4-5.2 7.4-1.1z" fill="#003262"/>`,
   nert:`<path d="M-12 6a12 12 0 0 1 24 0Z" fill="#003262"/><path d="M-14 6h28" stroke="#003262" stroke-width="3" stroke-linecap="round"/><path d="M0-6v12" stroke="#fff" stroke-width="2.4"/>`,
   firstaid:`<path d="M-4-11h8v7h7v8h-7v7h-8v-7h-7v-8h7z" fill="#003262"/>`,
   fixit:`<path d="M-8 9 3-2M2-9a6 6 0 1 0 7 7l-4-1-2-2z" fill="none" stroke="#003262" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>`,
@@ -84,8 +87,9 @@ function bearSVG(p,{umbrella=false,badges=true}={}){
 
 /* options the phone offers, in the app's order */
 const OPTIONS={bear:['polar','sun','grizzly','panda'],hat:['none','bucket','tophat','bow'],neck:['none','scarf','bowtie','beads'],face:['happy','dot','sleepy']};
-const SKILLS=[{id:'bike',kind:'bike',label:'Bike repair',sub:'Flats, chains, brakes'},{id:'firstaid',kind:'kit',label:'First aid',sub:'Bandages, staying calm, calling for help'},{id:'fixit',kind:'wrench',label:'Fix-it',sub:'Tools, loose screws, wobbly chairs'},{id:'nert',kind:'helmet',label:'NERT/CERT',sub:'Trained for campus emergencies'}];
+const SKILLS=[{id:'bike',kind:'bike',label:'Bike repair',sub:'Flats, chains, brakes'},{id:'firstaid',kind:'kit',label:'First aid',sub:'Bandages, staying calm, calling for help'},{id:'fixit',kind:'wrench',label:'Fix-it',sub:'Tools, loose screws, wobbly chairs'},{id:'nert',kind:'helmet',label:'NERT/CERT',sub:'Trained for campus emergencies'},{id:'umbrella',kind:'umbrella',label:'Spare umbrella',sub:'Can lend or share one when it rains'},{id:'charger',kind:'charger',label:'Power bank',sub:'Phone charger or battery to share'}];
+const OTHER={id:'other',kind:'other',label:'Something else',sub:'Write what you can help with'};
 /* full SVG for one bear, for pages that just need a picture */
 function bearPicture(p,h){return `<svg viewBox="0 -60 200 360" height="${h}" width="${Math.round(h*200/360)}" aria-hidden="true"><defs><clipPath id="bodyClip"><path d="${BASE.body}"/></clipPath></defs>${bearSVG(p,{badges:false})}</svg>`;}
-return {INK,BASE,FUR,FACE,HAT,NECK,ICON,UMB_STYLES,umbrellaSVG,bearSVG,bearPicture,OPTIONS,SKILLS};
+return {INK,BASE,FUR,FACE,HAT,NECK,ICON,UMB_STYLES,umbrellaSVG,bearSVG,bearPicture,OPTIONS,SKILLS,OTHER};
 })();
