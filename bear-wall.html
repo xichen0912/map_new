@@ -162,12 +162,12 @@ const SLOTS=[
 ];
 /* sample bears from the playtest app: shown only until a real person checks in (or always with ?demo=1) */
 const SAMPLE=[
-  {id:'spokes',bear:'polar',hat:'bucket',neck:'scarf',face:'happy',skills:['bike','firstaid']},
-  {id:'remy',bear:'sun',hat:'tophat',neck:'bowtie',face:'happy',skills:['firstaid','fixit']},
-  {id:'basil',bear:'grizzly',hat:'bucket',neck:'none',face:'dot',skills:['bike','fixit']},
-  {id:'wren',bear:'panda',hat:'tophat',neck:'bowtie',face:'dot',skills:['fixit']},
-  {id:'pip',bear:'panda',hat:'none',neck:'beads',face:'happy',skills:['fixit']},
-  {id:'juniper',bear:'grizzly',hat:'bow',neck:'beads',face:'sleepy',skills:['firstaid']}
+  {id:'spokes',n:'Spokes',bear:'polar',hat:'bucket',neck:'scarf',face:'happy',skills:['bike','firstaid']},
+  {id:'remy',n:'Remy',bear:'sun',hat:'tophat',neck:'bowtie',face:'happy',skills:['firstaid','fixit']},
+  {id:'basil',n:'Basil',bear:'grizzly',hat:'bucket',neck:'none',face:'dot',skills:['bike','fixit']},
+  {id:'wren',n:'Wren',bear:'panda',hat:'tophat',neck:'bowtie',face:'dot',skills:['fixit']},
+  {id:'pip',n:'Pip',bear:'panda',hat:'none',neck:'beads',face:'happy',skills:['fixit']},
+  {id:'juniper',n:'Juniper',bear:'grizzly',hat:'bow',neck:'beads',face:'sleepy',skills:['firstaid']}
 ].map((p,i)=>({...p,sample:true,...SLOTS[i]}));
 const DEMO=new URLSearchParams(location.search).has('demo');
 let PEOPLE=SAMPLE.slice();
@@ -346,9 +346,12 @@ function renderBears(){
     return `${lshadow}${refl}<g data-id="${p.id}" transform="${tr}"><g class="popw">${night||state.t==='evening'?`<ellipse cx="100" cy="282" rx="110" ry="34" fill="url(#warm)"/>`:''}<g class="bob" style="animation-delay:-${(i*.61).toFixed(2)}s">${art}</g></g></g>${tag(p)}`}).join('');
 }
 
+const tagCtx=document.createElement('canvas').getContext('2d');
+const escX=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 function tag(p){
-  const n=p.skills.length,u=24,w=n*u+14,h=26,x=p.x-w/2,y=p.y+6;
-  return `<g transform="translate(${x} ${y})"><rect width="${w}" height="${h}" rx="13" fill="#fbfaf7" fill-opacity=".92" stroke="${INK}" stroke-opacity=".55" stroke-width="1.2"/>${p.skills.map((k,i)=>`<g transform="translate(${7+u/2+i*u} ${h/2}) scale(.62)">${ICON[k]}</g>`).join('')}</g>`;
+  const name=(p.n||'').trim(),fs=14;tagCtx.font=`800 ${fs}px Nunito, system-ui, sans-serif`;
+  const tw=name?Math.ceil(tagCtx.measureText(name).width)+8:0,n=p.skills.length,u=24,w=tw+n*u+16,h=26,x=p.x-w/2,y=p.y+6;
+  return `<g transform="translate(${x.toFixed(1)} ${y})"><rect width="${w}" height="${h}" rx="13" fill="#fbfaf7" fill-opacity=".94" stroke="${INK}" stroke-opacity=".55" stroke-width="1.2"/>${name?`<text x="10" y="${h/2+fs*.36}" font-family="Nunito, system-ui, sans-serif" font-weight="800" font-size="${fs}" fill="${INK}">${escX(name)}</text>`:''}${p.skills.map((k,i)=>`<g transform="translate(${8+tw+u/2+i*u} ${h/2}) scale(.62)">${ICON[k]}</g>`).join('')}</g>`;
 }
 function bubble(p,text){
   const fs=p.h>180?24:21;
@@ -477,7 +480,7 @@ function hashPick(id,arr){let h=0;for(const c of id)h=(h*31+c.charCodeAt(0))>>>0
 function isLive(d){return !!(d&&typeof d==='object'&&Array.isArray(d.k)&&d.k.length&&(!d.until||d.until>Date.now()))}
 function toBear(id,d){const b=d.bear||{},O=window.BEAR.OPTIONS;
   const skills=[...new Set(d.k.map(k=>KIND2SKILL[k]).filter(Boolean))].slice(0,2);
-  return {id,live:true,bear:O.bear.includes(b.b)?b.b:hashPick(id,O.bear),hat:O.hat.includes(b.h)?b.h:hashPick(id+'h',O.hat),neck:O.neck.includes(b.nk)?b.nk:hashPick(id+'n',O.neck),face:O.face.includes(b.f)?b.f:hashPick(id+'f',O.face),skills:skills.length?skills:['fixit']}}
+  return {id,live:true,n:String(d.n||'').slice(0,14),bear:O.bear.includes(b.b)?b.b:hashPick(id,O.bear),hat:O.hat.includes(b.h)?b.h:hashPick(id+'h',O.hat),neck:O.neck.includes(b.nk)?b.nk:hashPick(id+'n',O.neck),face:O.face.includes(b.f)?b.f:hashPick(id+'f',O.face),skills:skills.length?skills:['fixit']}}
 function realPeople(){const shown=[],quiet=[];for(const [id,d] of Object.entries(msgs)){if(!isLive(d))continue;(d.show?shown:quiet).push(toBear(id,d))}return {shown,quiet}}
 function recast(newId){
   const {shown,quiet}=realPeople();
@@ -505,10 +508,10 @@ function onPerson(id,d){
   if(d)msgs[id]=d;else delete msgs[id];
   const now=isLive(d)&&d.show,nowQ=isLive(d)&&!d.show;
   if(isLive(d)){seen.add(id);try{localStorage.setItem('blo-bear-seen',JSON.stringify([...seen].slice(-300)))}catch(e){}}
-  const sk=d&&isLive(d)?toBear(id,d).skills.map(k=>SKLABEL[k]).join(' + '):'';
-  if(now&&!was)pushEvent('A new bear checked in · '+sk);
+  const sk=d&&isLive(d)?toBear(id,d).skills.map(k=>SKLABEL[k]).join(' + '):'',who=String((d||prev||{}).n||'').slice(0,14);
+  if(now&&!was)pushEvent((who||'A new bear')+' checked in · '+sk);
   else if(nowQ&&!wasQ)pushEvent('Someone is helping quietly · '+sk);
-  else if((was||wasQ)&&!now&&!nowQ)pushEvent('A bear headed out · thanks for helping');
+  else if((was||wasQ)&&!now&&!nowQ&&was)pushEvent((who||'A bear')+' headed out · thanks for helping');
   recast(now&&!was?id:null);
 }
 function headline(n){const {t,w}=state;document.getElementById('headline').textContent=n?`${W_WORD[w]} ${T_WORD[t]}. ${n} ${n===1?'person':'people'} nearby can lend a hand.`:`${W_WORD[w]} ${T_WORD[t]}. Be the first to check in.`}
@@ -526,7 +529,7 @@ drawQR();
 if(new URLSearchParams(location.search).has('test'))window.__onPerson=onPerson;
 const lt=document.getElementById('liveTxt'),ld=document.getElementById('liveDot');
 if(window.BLO&&window.mqtt){BLO.connect({subscribe:true,onStatus:(up)=>{lt.textContent='Jacobs Hall courtyard · '+(up?'live':'connecting…');ld.classList.toggle('off',!up)},onMessage:onPerson})}else{lt.textContent='Jacobs Hall courtyard · offline';ld.classList.add('off')}
-if(document.fonts)document.fonts.ready.then(()=>svg.querySelectorAll('#bubbles .bub').forEach(layoutBubble));
+if(document.fonts)document.fonts.ready.then(()=>{renderBears();svg.querySelectorAll('#bubbles .bub').forEach(layoutBubble)});
 
 const panel=document.getElementById('panel'),ctlBtn=document.getElementById('ctlBtn');
 ctlBtn.addEventListener('click',()=>{panel.hidden=!panel.hidden;ctlBtn.setAttribute('aria-expanded',!panel.hidden)});
