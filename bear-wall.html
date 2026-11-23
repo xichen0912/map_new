@@ -348,10 +348,11 @@ function renderBears(){
     return `${lshadow}${refl}<g data-id="${p.id}" transform="${tr}"><g class="popw">${night||state.t==='evening'?`<ellipse cx="100" cy="282" rx="110" ry="34" fill="url(#warm)"/>`:''}<g class="bob" style="animation-delay:-${(i*.61).toFixed(2)}s">${art}</g></g></g>${tag(p)}`}).join('');
 }
 
+const SHOW_NAMES=false; // nicknames stay on the phone only
 const tagCtx=document.createElement('canvas').getContext('2d');
 const escX=t=>String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 function tag(p){
-  const name=(p.n||'').trim(),fs=14;tagCtx.font=`800 ${fs}px Nunito, system-ui, sans-serif`;
+  const name=SHOW_NAMES?(p.n||'').trim():'',fs=14;tagCtx.font=`800 ${fs}px Nunito, system-ui, sans-serif`;
   const tw=name?Math.ceil(tagCtx.measureText(name).width)+8:0,n=p.skills.length,u=24,w=tw+n*u+16,h=26,x=p.x-w/2,y=p.y+6;
   return `<g transform="translate(${x.toFixed(1)} ${y})"><rect width="${w}" height="${h}" rx="13" fill="#fbfaf7" fill-opacity=".94" stroke="${INK}" stroke-opacity=".55" stroke-width="1.2"/>${name?`<text x="10" y="${h/2+fs*.36}" font-family="Nunito, system-ui, sans-serif" font-weight="800" font-size="${fs}" fill="${INK}">${escX(name)}</text>`:''}${p.skills.map((k,i)=>`<g transform="translate(${8+tw+u/2+i*u} ${h/2}) scale(.62)">${ICON[k]}</g>`).join('')}</g>`;
 }
@@ -510,7 +511,7 @@ function onPerson(id,d){
   if(d)msgs[id]=d;else delete msgs[id];
   const now=isLive(d)&&d.show,nowQ=isLive(d)&&!d.show;
   if(isLive(d)){seen.add(id);try{localStorage.setItem('blo-bear-seen',JSON.stringify([...seen].slice(-300)))}catch(e){}}
-  const sk=d&&isLive(d)?(b=>b.skills.map(k=>k==='other'&&b.other?b.other:SKLABEL[k]).join(' + '))(toBear(id,d)):'',who=String((d||prev||{}).n||'').slice(0,14);
+  const sk=d&&isLive(d)?(b=>b.skills.map(k=>k==='other'&&b.other?b.other:SKLABEL[k]).join(' + '))(toBear(id,d)):'',who=SHOW_NAMES?String((d||prev||{}).n||'').slice(0,14):'';
   if(now&&!was)pushEvent((who||'A new bear')+' checked in · '+sk);
   else if(nowQ&&!wasQ)pushEvent('Someone is helping quietly · '+sk);
   else if((was||wasQ)&&!now&&!nowQ&&was)pushEvent((who||'A bear')+' headed out · thanks for helping');
