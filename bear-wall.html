@@ -35,6 +35,7 @@ h1{margin:0;font-weight:800;font-size:clamp(24px,2.7vw,46px);line-height:1.02;le
 .clock{font-weight:300;font-size:clamp(30px,3.8vw,64px);line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
 .wx{margin-top:.55em;display:inline-flex;align-items:center;gap:.5em;font-size:clamp(13px,1.1vw,18px);color:var(--hud-2)}
 .wx svg{width:1.4em;height:1.4em}
+.src{margin-top:.35em;font-size:clamp(11px,.8vw,13px);color:var(--hud-2);opacity:.8}
 .bottom{bottom:0;align-items:flex-end;font-size:clamp(12px,1vw,16px)}
 .stash{display:grid;gap:.5em;width:min(30vw,380px)}
 .stash .row{display:flex;justify-content:space-between;gap:1em;color:var(--hud-2)}
@@ -115,6 +116,7 @@ body.ready .layer{transition:opacity 1.6s}
     <div class="status">
       <div class="clock" id="clock">2:30 pm</div>
       <div class="wx" id="wx"></div>
+      <div class="src" id="src"></div>
     </div>
   </header>
 
@@ -136,8 +138,8 @@ body.ready .layer{transition:opacity 1.6s}
     <div class="seg" id="segTime"><button type="button" data-t="morning">Morning</button><button type="button" data-t="day">Day</button><button type="button" data-t="evening">Evening</button><button type="button" data-t="night">Night</button></div>
     <h2>Weather</h2>
     <div class="seg" id="segWx"><button type="button" data-w="clear">Clear</button><button type="button" data-w="cloudy">Cloudy</button><button type="button" data-w="rain">Rain</button><button type="button" data-w="fog">Fog</button></div>
-    <div class="row2"><button type="button" id="autoBtn" aria-pressed="false">Real clock</button><button type="button" id="cleanBtn">Projector mode</button></div>
-    <small>Keys: 1–4 time · Q W E R weather · A real clock · H hide controls · F fullscreen. Link presets such as #night-rain.</small>
+    <div class="row2"><button type="button" id="autoBtn" aria-pressed="false">Match real world</button><button type="button" id="cleanBtn">Projector mode</button></div>
+    <small>Keys: 1–4 time · Q W E R weather · A match real world · H hide controls · F fullscreen. Link presets such as #night-rain.</small>
   </div>
 </div>
 
@@ -155,7 +157,7 @@ const {BASE,ICON,UMB_STYLES,bearSVG,SKILLS}=window.BEAR;
 
 /* ── slots on the plaza: front rows are bigger ── */
 const SLOTS=[
-  {x:560,y:640,h:150},{x:1110,y:635,h:150},{x:820,y:700,h:172},{x:1330,y:722,h:184},{x:330,y:748,h:196},
+  {x:560,y:640,h:150},{x:1110,y:635,h:150},{x:820,y:700,h:172},{x:1300,y:700,h:178},{x:330,y:748,h:196},
   {x:1010,y:758,h:200},{x:690,y:612,h:132},{x:960,y:606,h:132},{x:175,y:690,h:172}
 ];
 /* sample bears from the playtest app: shown only until a real person checks in (or always with ?demo=1) */
@@ -409,7 +411,7 @@ function apply(){
   svg.querySelector('#wetG').style.opacity=w==='rain'?1:0;
   recast();
   
-  document.getElementById('wx').innerHTML=WXICON[w](t)+`<span>${W_WORD[w]} ${T_WORD[t]}</span>`;
+  document.getElementById('wx').innerHTML=WXICON[w](t)+`<span>${W_WORD[w]} ${T_WORD[t]}${state.auto&&wxInfo&&wxInfo.temp!=null?` · ${wxInfo.temp}°F`:''}</span>`;renderSrc();
   document.querySelectorAll('#segTime button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.t===t));
   document.querySelectorAll('#segWx button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.w===w));
   document.getElementById('autoBtn').setAttribute('aria-pressed',state.auto);
@@ -417,7 +419,26 @@ function apply(){
   try{localStorage.setItem('blo.proj',JSON.stringify(state))}catch(e){}
 }
 
-function clockTime(){const hr=new Date().getHours();return hr>=5&&hr<10?'morning':hr>=10&&hr<17?'day':hr>=17&&hr<20?'evening':'night'}
+/* ── real world: Berkeley sun times + current weather (Open-Meteo, free, no key) ── */
+const LOC={lat:37.876,lon:-122.2588};
+let sunT=null,wxInfo=null;
+function clockTime(){const now=Date.now(),M=60e3;
+  if(sunT){if(now<sunT.rise-30*M)return 'night';if(now<sunT.rise+180*M)return 'morning';if(now<sunT.set-90*M)return 'day';if(now<sunT.set+45*M)return 'evening';return 'night'}
+  const hr=new Date().getHours();return hr>=5&&hr<10?'morning':hr>=10&&hr<17?'day':hr>=17&&hr<20?'evening':'night'}
+function codeToW(c){if(c<=1)return 'clear';if(c===45||c===48)return 'fog';if((c>=51&&c<=67)||(c>=80&&c<=82)||c>=95)return 'rain';return 'cloudy'}
+async function fetchWx(){
+  try{const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${LOC.lat}&longitude=${LOC.lon}&current=weather_code,temperature_2m&daily=sunrise,sunset&timezone=America%2FLos_Angeles&temperature_unit=fahrenheit&forecast_days=1`);
+    const j=await r.json();
+    sunT={rise:new Date(j.daily.sunrise[0]).getTime(),set:new Date(j.daily.sunset[0]).getTime()};
+    wxInfo={code:j.current.weather_code,temp:Math.round(j.current.temperature_2m),at:Date.now()};
+  }catch(e){wxInfo={...(wxInfo||{}),err:true,at:Date.now()}}
+  if(state.auto){state.t=clockTime();if(wxInfo&&wxInfo.code!=null)state.w=codeToW(wxInfo.code);apply();tick()}else renderSrc();
+}
+function renderSrc(){const el=document.getElementById('src');if(!el)return;
+  if(!state.auto){el.textContent='Manual scene';return}
+  if(!wxInfo){el.textContent='Matching Berkeley weather…';return}
+  const t=new Date(wxInfo.at).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}).toLowerCase();
+  el.textContent=wxInfo.err&&wxInfo.code==null?'Weather offline · using the clock':`Live Berkeley weather · ${wxInfo.err?'last ':''}updated ${t}`}
 function tick(){
   let txt=new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}).toLowerCase();
   if(!state.auto)txt={morning:'8:15 am',day:'2:30 pm',evening:'6:40 pm',night:'11:20 pm'}[state.t];
@@ -497,10 +518,10 @@ function drawQR(){try{const u=new URL('bear-join.html',location.href);u.search=l
   const q=qrcode(0,'M');q.addData(u.href);q.make();const n=q.getModuleCount();let r='';for(let y=0;y<n;y++)for(let x=0;x<n;x++)if(q.isDark(y,x))r+=`M${x} ${y}h1v1h-1z`;
   document.getElementById('qr').innerHTML=`<svg viewBox="0 0 ${n} ${n}" shape-rendering="crispEdges"><path d="${r}" fill="#141414"/></svg>`;document.getElementById('qr').title=u.href}catch(e){document.getElementById('qr').textContent='QR unavailable'}}
 build();
-try{const s=JSON.parse(localStorage.getItem('blo.proj')||'null');if(s&&!location.hash)Object.assign(state,s)}catch(e){}
+state.auto=true;
 fromHash();if(state.auto)state.t=clockTime();
 apply();tick();requestAnimationFrame(()=>requestAnimationFrame(()=>document.body.classList.add('ready')));
-setInterval(tick,15000);setInterval(()=>cycleBubbles(),7000);setInterval(()=>recast(),30000);
+setInterval(tick,15000);fetchWx();setInterval(fetchWx,10*60e3);setInterval(()=>cycleBubbles(),7000);setInterval(()=>recast(),30000);
 drawQR();
 if(new URLSearchParams(location.search).has('test'))window.__onPerson=onPerson;
 const lt=document.getElementById('liveTxt'),ld=document.getElementById('liveDot');
@@ -510,8 +531,8 @@ if(document.fonts)document.fonts.ready.then(()=>svg.querySelectorAll('#bubbles .
 const panel=document.getElementById('panel'),ctlBtn=document.getElementById('ctlBtn');
 ctlBtn.addEventListener('click',()=>{panel.hidden=!panel.hidden;ctlBtn.setAttribute('aria-expanded',!panel.hidden)});
 document.getElementById('segTime').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;state.auto=false;state.t=b.dataset.t;apply();tick()});
-document.getElementById('segWx').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;state.w=b.dataset.w;apply()});
-document.getElementById('autoBtn').addEventListener('click',()=>{state.auto=!state.auto;if(state.auto)state.t=clockTime();apply();tick()});
+document.getElementById('segWx').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;state.auto=false;state.w=b.dataset.w;apply();tick()});
+document.getElementById('autoBtn').addEventListener('click',()=>{state.auto=!state.auto;if(state.auto){state.t=clockTime();if(wxInfo&&wxInfo.code!=null)state.w=codeToW(wxInfo.code);fetchWx()}apply();tick()});
 const clean=()=>{document.body.classList.toggle('clean');panel.hidden=true;ctlBtn.setAttribute('aria-expanded','false')};
 document.getElementById('cleanBtn').addEventListener('click',()=>{clean();try{document.documentElement.requestFullscreen?.().catch(()=>{})}catch(e){}});
 window.addEventListener('hashchange',()=>{if(fromHash()){apply();tick()}});
@@ -519,8 +540,8 @@ document.addEventListener('keydown',e=>{
   if(e.metaKey||e.ctrlKey||e.altKey)return;const k=e.key.toLowerCase();
   const T={'1':'morning','2':'day','3':'evening','4':'night'},Wk={q:'clear',w:'cloudy',e:'rain',r:'fog'};
   if(T[k]){state.auto=false;state.t=T[k];apply();tick()}
-  else if(Wk[k]){state.w=Wk[k];apply()}
-  else if(k==='a'){state.auto=!state.auto;if(state.auto)state.t=clockTime();apply();tick()}
+  else if(Wk[k]){state.auto=false;state.w=Wk[k];apply();tick()}
+  else if(k==='a'){state.auto=!state.auto;if(state.auto){state.t=clockTime();fetchWx()}apply();tick()}
   else if(k==='h')clean();
   else if(k==='f'){try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen().catch(()=>{})}catch(err){}}
 });
