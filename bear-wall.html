@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Berkeley Looks Out Projection</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* VOICE  quiet and considered, a printed poster on the wall rather than a cartoon
+   IDEA   a risograph courtyard print of Jacobs Hall that changes with the real light outside
+   PICTURE fine-line elevation of the hall, stippled trees, paved plaza in perspective, the app's bears small within it
+   COLOUR app tokens kept (ink, paper, Berkeley blue, gold) but desaturated skies and soft light; gold only for light sources
+   TYPE   Nunito 300 for the clock, 800 for the title, 600 for text; hairlines instead of hard shadows */
+:root{--ink:#141414;--paper:#f5f3ee;--blue:#003262;--gold:#fdb515;--hud:#141414;--hud-2:rgba(20,20,20,.62);--rule:rgba(20,20,20,.25)}
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0;height:100%;background:#0b1424;overflow:hidden}
+body{font:600 16px/1.4 Nunito,system-ui,sans-serif;color:var(--ink)}
+body.night,body.evening{--hud:#f5f3ee;--hud-2:rgba(245,243,238,.7);--rule:rgba(245,243,238,.3)}
+.stage{position:fixed;inset:0}
+#scene{position:absolute;inset:0;width:100%;height:100%;display:block}
+.scrim{position:absolute;left:0;right:0;pointer-events:none;transition:background 1.2s}
+.scrim.t{top:0;height:30%;background:linear-gradient(var(--scrim,rgba(245,243,238,.0)),transparent)}
+.scrim.b{bottom:0;height:24%;background:linear-gradient(transparent,var(--scrim-b,rgba(245,243,238,.55)))}
+body.evening{--scrim:rgba(20,22,48,.35);--scrim-b:rgba(20,18,30,.55)}
+body.night{--scrim:rgba(3,8,20,.4);--scrim-b:rgba(3,8,20,.6)}
+.hud{position:absolute;left:0;right:0;pointer-events:none;padding:clamp(16px,2.8vw,48px) clamp(18px,3.4vw,60px);display:flex;justify-content:space-between;gap:24px;color:var(--hud);transition:color 1s}
+.top{top:0;align-items:flex-start}
+.place{margin:0 0 .5em;font-size:clamp(12px,1vw,16px);font-weight:600;color:var(--hud-2);display:flex;align-items:center;gap:.6em}
+.place i{width:.55em;height:.55em;border-radius:50%;background:var(--gold);box-shadow:0 0 0 3px rgba(253,181,21,.25);animation:pulse 2.4s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 7px rgba(253,181,21,0)}}
+h1{margin:0;font-weight:800;font-size:clamp(24px,2.7vw,46px);line-height:1.02;letter-spacing:-.015em}
+#headline{margin:.5em 0 0;font-size:clamp(13px,1.15vw,19px);color:var(--hud-2);max-width:32em}
+.status{text-align:right}
+.clock{font-weight:300;font-size:clamp(30px,3.8vw,64px);line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.wx{margin-top:.55em;display:inline-flex;align-items:center;gap:.5em;font-size:clamp(13px,1.1vw,18px);color:var(--hud-2)}
+.wx svg{width:1.4em;height:1.4em}
+.bottom{bottom:0;align-items:flex-end;font-size:clamp(12px,1vw,16px)}
+.stash{display:grid;gap:.5em;width:min(30vw,380px)}
+.stash .row{display:flex;justify-content:space-between;gap:1em;color:var(--hud-2)}
+.stash b{color:var(--hud);font-weight:800}
+.bar{height:3px;background:var(--rule);border-radius:2px;overflow:hidden}
+.bar i{display:block;height:100%;width:24%;background:var(--gold);transition:width 1.4s}
+.qrcard{display:flex;align-items:center;gap:1em;color:var(--hud-2);pointer-events:auto}
+.qr{width:clamp(84px,7.2vw,124px);aspect-ratio:1;background:#fff;border-radius:12px;padding:7px;box-shadow:0 6px 20px rgba(0,0,0,.12);flex:none}
+.qr svg{display:block;width:100%;height:100%}
+.qrtxt{display:grid;gap:.25em;max-width:15em}
+.qrtxt>b{color:var(--hud);font-weight:800;font-size:1.15em}
+.qrtxt span b{color:var(--hud)}
+.qrtxt small{font-size:.82em;opacity:.8}
+.place i.off{background:#9aa3ae;animation:none;box-shadow:none}
+.cta{text-align:right;color:var(--hud-2)}
+.cta b{color:var(--hud);font-weight:800}
+.cta .q{display:inline-block;margin-right:1.2em;padding-right:1.2em;border-right:1px solid var(--rule)}
+.cta small{display:block;margin-top:.35em;font-size:.82em;opacity:.8}
+/* controls */
+.ctl-btn{display:grid;place-items:center;position:absolute;right:clamp(12px,1.6vw,24px);top:50%;transform:translateY(-50%);z-index:5;width:44px;height:44px;border-radius:50%;background:rgba(245,243,238,.85);backdrop-filter:blur(8px);border:1px solid rgba(20,20,20,.2);font:700 18px Nunito;cursor:pointer;color:var(--ink)}
+.panel{position:absolute;right:calc(clamp(12px,1.6vw,24px) + 56px);top:50%;transform:translateY(-50%);z-index:5;background:rgba(245,243,238,.94);backdrop-filter:blur(14px);border:1px solid rgba(20,20,20,.15);border-radius:16px;box-shadow:0 20px 50px rgba(0,0,0,.18);padding:18px;width:min(330px,calc(100vw - 90px));display:grid;gap:10px}
+.panel[hidden]{display:none}
+.panel h2{margin:4px 0 0;font-size:13px;font-weight:700;color:#6e6b66}
+.seg{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;background:rgba(20,20,20,.06);padding:4px;border-radius:12px}
+.seg button,.row2 button{min-height:44px;border:0;border-radius:9px;background:transparent;font:700 13px Nunito;color:var(--ink);cursor:pointer}
+.seg button[aria-pressed=true]{background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.row2{display:flex;gap:6px}
+.row2 button{flex:1;border:1px solid rgba(20,20,20,.18);background:#fff}
+.row2 button[aria-pressed=true]{background:var(--blue);color:#fff;border-color:var(--blue)}
+.panel small{color:#6e6b66;font-weight:600;font-size:12.5px;line-height:1.4}
+button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+body.clean .ctl-btn,body.clean .panel{display:none}
+body.clean{cursor:none}
+/* motion */
+.bob{animation:bob 4s ease-in-out infinite;transform-box:fill-box;transform-origin:50% 100%}
+@keyframes bob{50%{transform:translateY(-2px)}}
+.bub{transition:opacity .7s,transform .7s;transform-box:fill-box;transform-origin:50% 100%}
+.bub.off{opacity:0;transform:translateY(8px)}
+.drop{animation:fall linear infinite}
+@keyframes fall{from{transform:translate(0,-100px)}to{transform:translate(-40px,1000px)}}
+.drift{animation:drift 60s ease-in-out infinite alternate}
+@keyframes drift{to{transform:translateX(140px)}}
+.star{animation:tw 4s ease-in-out infinite}
+@keyframes tw{50%{opacity:.2}}
+.popw{transform-box:fill-box;transform-origin:50% 100%}
+.pop{animation:pop .9s cubic-bezier(.3,1.4,.5,1)}
+@keyframes pop{from{transform:translateY(14px);opacity:0}}
+body.ready .layer{transition:opacity 1.6s}
+.rip{animation:rip 1.8s ease-out infinite;transform-box:fill-box;transform-origin:center}
+@keyframes rip{from{transform:scale(.2);opacity:.8}to{transform:scale(1.5);opacity:0}}
+.bird{animation:fly 48s linear infinite}
+@keyframes fly{from{transform:translate(-120px,0)}50%{transform:translate(800px,6px)}to{transform:translate(1760px,10px)}}
+.skills{display:flex;flex-wrap:wrap;gap:.4em 1.1em;margin-top:.8em;font-size:clamp(12px,.95vw,15px);color:var(--hud-2)}
+.skills span{display:inline-flex;align-items:center;gap:.4em}
+.skills svg{width:1.3em;height:1.3em;color:var(--hud)}
+.skills b{color:var(--hud);font-weight:800}
+.ticker{flex:1;display:flex;justify-content:center;align-items:center;gap:.6em;color:var(--hud-2);padding:0 1em;text-align:center}
+.ticker i{flex:none;width:.5em;height:.5em;border-radius:50%;background:var(--gold)}
+#tick{transition:opacity .6s}
+#tick.off{opacity:0}
+@media (max-width:1100px){.ticker{display:none}}
+@media (prefers-reduced-motion:reduce){.rip,.bird,.bob,.drop,.drift,.star,.pop,.place i{animation:none}}
+@media (max-width:640px){.bottom{flex-direction:column;align-items:stretch}.stash{width:auto}}
+</style>
+</head>
+<body class="day">
+<div class="stage">
+  <svg id="scene" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMax slice" role="img" aria-label="Courtyard projection: bears in front of Jacobs Hall offering help"></svg>
+  <div class="scrim t"></div><div class="scrim b"></div>
+
+  <header class="hud top">
+    <div>
+      <p class="place"><i id="liveDot"></i><span id="liveTxt">Jacobs Hall courtyard · connecting…</span></p>
+      <h1>Berkeley Looks Out</h1>
+      <p id="headline"></p>
+      <div class="skills" id="skills"></div>
+    </div>
+    <div class="status">
+      <div class="clock" id="clock">2:30 pm</div>
+      <div class="wx" id="wx"></div>
+    </div>
+  </header>
+
+  <footer class="hud bottom">
+    <div class="stash">
+      <div class="row"><span><b id="stashTxt">24</b> of 100 acorns this week</span><span>Jacobs stash</span></div>
+      <div class="bar"><i id="stashBar"></i></div>
+    </div>
+    <div class="ticker"><i></i><span id="tick"></span></div>
+    <div class="qrcard">
+      <div class="qr" id="qr" aria-label="QR code to add your bear"></div>
+      <div class="qrtxt"><b>Scan to add your bear</b><span><b id="quiet">0</b> helping quietly</span><small id="sampleNote">Sample bears until someone checks in</small></div>
+    </div>
+  </footer>
+
+  <button class="ctl-btn" id="ctlBtn" type="button" aria-expanded="false" aria-controls="panel" title="Scene controls (H hides everything)"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg></button>
+  <div class="panel" id="panel" hidden>
+    <h2>Time of day</h2>
+    <div class="seg" id="segTime"><button type="button" data-t="morning">Morning</button><button type="button" data-t="day">Day</button><button type="button" data-t="evening">Evening</button><button type="button" data-t="night">Night</button></div>
+    <h2>Weather</h2>
+    <div class="seg" id="segWx"><button type="button" data-w="clear">Clear</button><button type="button" data-w="cloudy">Cloudy</button><button type="button" data-w="rain">Rain</button><button type="button" data-w="fog">Fog</button></div>
+    <div class="row2"><button type="button" id="autoBtn" aria-pressed="false">Real clock</button><button type="button" id="cleanBtn">Projector mode</button></div>
+    <small>Keys: 1–4 time · Q W E R weather · A real clock · H hide controls · F fullscreen. Link presets such as #night-rain.</small>
+  </div>
+</div>
+
+<script src="vendor/mqtt.min.js"></script>
+<script src="vendor/qrcode.js"></script>
+<script src="live.js"></script>
+<script src="bear-art.js"></script>
+<script>
+{
+const NS='http://www.w3.org/2000/svg';
+const svg=document.getElementById('scene');
+const INK='#141414';
+
+const {BASE,ICON,UMB_STYLES,bearSVG,SKILLS}=window.BEAR;
+
+/* ── slots on the plaza: front rows are bigger ── */
+const SLOTS=[
+  {x:560,y:640,h:150},{x:1110,y:635,h:150},{x:820,y:700,h:172},{x:1330,y:722,h:184},{x:330,y:748,h:196},
+  {x:1010,y:758,h:200},{x:690,y:612,h:132},{x:960,y:606,h:132},{x:175,y:690,h:172}
+];
+/* sample bears from the playtest app: shown only until a real person checks in (or always with ?demo=1) */
+const SAMPLE=[
+  {id:'spokes',bear:'polar',hat:'bucket',neck:'scarf',face:'happy',skills:['bike','firstaid']},
+  {id:'remy',bear:'sun',hat:'tophat',neck:'bowtie',face:'happy',skills:['firstaid','fixit']},
+  {id:'basil',bear:'grizzly',hat:'bucket',neck:'none',face:'dot',skills:['bike','fixit']},
+  {id:'wren',bear:'panda',hat:'tophat',neck:'bowtie',face:'dot',skills:['fixit']},
+  {id:'pip',bear:'panda',hat:'none',neck:'beads',face:'happy',skills:['fixit']},
+  {id:'juniper',bear:'grizzly',hat:'bow',neck:'beads',face:'sleepy',skills:['firstaid']}
+].map((p,i)=>({...p,sample:true,...SLOTS[i]}));
+const DEMO=new URLSearchParams(location.search).has('demo');
+let PEOPLE=SAMPLE.slice();
+
+const SAY={
+  bike:{any:['I can fix bikes','Flat tire? I have a pump'],rain:['Wet brakes? I can check'],night:['Riding home? Spare lights here'],fog:['Foggy ride? I have a light']},
+  firstaid:{any:['I know first aid','Need a bandage?'],rain:['Slipped? I have bandages'],night:['Walking late? I’ll come along'],fog:['I know first aid']},
+  nert:{any:['I’m CERT trained','Trained for emergencies'],rain:['Stay off the slick steps'],night:['Here if anything goes wrong'],fog:['I’m CERT trained']},
+  fixit:{any:['I can fix things','Wobbly chair? I have tools'],rain:['Spare umbrella here'],night:['Still in studio, ask me'],fog:['Need a hand?']},
+  mood:{morning:['Morning, Jacobs','Coffee run, need anything?'],day:['Need a hand?'],evening:['Heading out soon, need a hand?'],night:['You okay up there?'],rain:['Sharing my umbrella'],cloudy:['Need a hand?'],fog:['Can’t see the bay either'],clear:['I’ve got you']}
+};
+function linesFor(p,t,w){const o=[];for(const s of p.skills){const S=SAY[s];if(!S)continue;o.push(...S.any);if(S[w])o.push(...S[w]);if(t==='night')o.push(...S.night,...S.night)}o.push(...(SAY.mood[t]||[]),...(SAY.mood[w]||[]));return o}
+
+/* palettes: sky stops, facade, glass, plaza, foliage, ambient tint */
+// one hue family per time of day; ramp c0 (lightest) → c4 (darkest)
+const PAL={
+  morning:{ramp:['#f5faf9','#dcefed','#b1d7d4','#7db3b1','#4c8789'],sky:['#b6d9e8','#e2f0ee','#fff5d2'],glass:'#cde5e8',plaza:['#fcfbf2','#ecefe5'],fogTo:'#f1f6f3',sun:[540,226,'#fff3bd'],wash:'#fff0a6'},
+  day:{ramp:['#f6f9fb','#dce9f2','#aecbe0','#76a3c6','#46739c'],sky:['#93bedf','#d2e6f0','#fbf2d6'],glass:'#c3dbeb',plaza:['#fdf8e9','#efe9d6'],fogTo:'#eef1ee',sun:[1180,150,'#ffe9a6'],wash:'#ffe08a'},
+  evening:{ramp:['#eef1f9','#d4dbef','#a3b0d9','#6c7db6','#414f8c'],sky:['#34468a','#8392c8','#ddd3e6'],glass:'#6a7ab2',plaza:['#eef0f9','#d8ddef'],fogTo:'#e2e6f3',sun:[1070,214,'#ffe0cf']},
+  night:{ramp:['#3a5a86','#2b4a76','#1f3c66','#173156','#0f2443'],sky:['#06112c','#10285a','#1c3f72'],glass:'#132a4d',plaza:['#24416b','#15294b'],fogTo:'#34507a',sun:[0,-500,'#fff']}
+};
+const mixHex=(a,b,t)=>{const p=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));const A=p(a),B=p(b);return '#'+A.map((v,i)=>Math.round(v+(B[i]-v)*t).toString(16).padStart(2,'0')).join('')};
+const W_DIM={clear:0,cloudy:.25,rain:.38,fog:.12};
+const T_WORD={morning:'morning',day:'afternoon',evening:'evening',night:'night'};
+const W_WORD={clear:'Clear',cloudy:'Cloudy',rain:'Rainy',fog:'Foggy'};
+const rnd=(a,b)=>a+Math.random()*(b-a);
+let seed=7;const sr=()=>(seed=(seed*16807)%2147483647)/2147483647;
+
+function treeMass(cx,cy,r){
+  const blobs=[...Array(18)].map(()=>{const a=sr()*6.28,d=sr()*r*.7;return [cx+Math.cos(a)*d,cy+Math.sin(a)*d*.8,r*(.35+sr()*.3)]});
+  return `<g><path d="M${cx-6} ${cy+r*.4}C${cx-4} ${cy+r*.9} ${cx-7} ${cy+r*1.2} ${cx-11} ${cy+r*1.45}H${cx+11}C${cx+7} ${cy+r*1.2} ${cx+4} ${cy+r*.9} ${cx+6} ${cy+r*.4}Z" style="fill:var(--c4)"/>
+  <g class="leaf">${blobs.map(([x,y,rr])=>`<circle cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" r="${rr.toFixed(0)}"/>`).join('')}</g>
+  <g fill="url(#fineDots)">${blobs.slice(0,8).map(([x,y,rr])=>`<circle cx="${(x+rr*.25).toFixed(0)}" cy="${(y+rr*.3).toFixed(0)}" r="${(rr*.8).toFixed(0)}"/>`).join('')}</g></g>`;
+}
+
+function build(){
+  // Jacobs Hall elevation: three floors of tall windows between slim mullions
+  const X0=250,X1=1350,cols=26,cw=(X1-X0-40)/cols,rows=[[292,62],[372,62],[452,46]];
+  const wins=[];rows.forEach(([y,h],r)=>{for(let c=0;c<cols;c++){if(r===2&&c>=11&&c<=14)continue;wins.push({x:X0+20+c*cw,y,w:cw-6,h})}});
+  const winRects=(cls,extra='')=>wins.map((w,i)=>`<rect class="${cls}" x="${w.x.toFixed(1)}" y="${w.y}" width="${w.w.toFixed(1)}" height="${w.h}" ${typeof extra==='function'?extra(i):extra}/>`).join('');
+  const lit=wins.map((_,i)=>((i*37)%11<6));
+  const vp=[800,520],pav=[];
+  for(let i=-14;i<=14;i++)pav.push(`<line x1="${vp[0]}" y1="${vp[1]}" x2="${800+i*150}" y2="900"/>`);
+  for(let k=1;k<9;k++){const y=520+Math.pow(k/8,1.8)*380;pav.push(`<line x1="0" y1="${y.toFixed(1)}" x2="1600" y2="${y.toFixed(1)}"/>`)}
+  const drops=[...Array(220)].map(()=>{const x=rnd(0,1700),y=rnd(-200,900);return `<line class="drop" x1="${x.toFixed(0)}" y1="${y.toFixed(0)}" x2="${(x-5).toFixed(0)}" y2="${(y+18).toFixed(0)}" style="animation-duration:${rnd(.5,.8).toFixed(2)}s;animation-delay:-${rnd(0,1).toFixed(2)}s"/>`}).join('');
+  const cx0=X0+20,door={x:cx0+11*cw,w:4*cw-6};
+  const piers=[];for(let c=0;c<=cols;c+=2){const x=cx0+c*cw-7;const end=(c>=12&&c<=14)?446:516;piers.push(`<rect x="${x.toFixed(1)}" y="262" width="8" height="${end-262}"/>`)}
+  const blindsIdx=wins.map((_,i)=>((i*53)%7<2));
+  const blinds=wins.map((w,i)=>blindsIdx[i]?`<rect x="${w.x.toFixed(1)}" y="${w.y}" width="${w.w.toFixed(1)}" height="${(w.h*(.3+((i*13)%5)/10)).toFixed(0)}" fill="url(#blinds)"/>`:'').join('');
+  const interiors=wins.map((w,i)=>{if(!lit[i])return '';const c=w.x+w.w/2,b=w.y+w.h,k=(i*7)%5;
+    if(k===0)return `<circle cx="${c.toFixed(1)}" cy="${b-19}" r="4.5"/><path d="M${(c-9).toFixed(1)} ${b}V${b-7}Q${c.toFixed(1)} ${b-16} ${(c+9).toFixed(1)} ${b-7}V${b}Z"/>`;
+    if(k===1)return `<rect x="${(c-4).toFixed(1)}" y="${b-8}" width="8" height="8"/><ellipse cx="${(c-4).toFixed(1)}" cy="${b-14}" rx="3" ry="7" transform="rotate(-25 ${(c-4).toFixed(1)} ${b-14})"/><ellipse cx="${(c+4).toFixed(1)}" cy="${b-14}" rx="3" ry="7" transform="rotate(25 ${(c+4).toFixed(1)} ${b-14})"/>`;
+    if(k===2)return `<rect x="${(c-9).toFixed(1)}" y="${b-19}" width="18" height="12" rx="1.5"/><rect x="${(c-1.5).toFixed(1)}" y="${b-7}" width="3" height="7"/>`;
+    if(k===3)return `<path d="M${(c-10).toFixed(1)} ${b-30}l6 10h-12z" transform="translate(${8} 0)"/><rect x="${(c-3).toFixed(1)}" y="${b-20}" width="1.6" height="20"/>`;
+    return '';}).join('');
+  const hills=`<path d="M0 410C180 368 360 338 560 356S900 396 1110 346S1420 300 1600 352V520H0Z" style="fill:var(--hill2)"/>
+    <path d="M0 462C240 430 430 436 640 452S1010 426 1260 436S1500 452 1600 446V520H0Z" style="fill:var(--hill1)"/><path d="M0 462C240 430 430 436 640 452S1010 426 1260 436S1500 452 1600 446V520H0Z" fill="url(#dotsL)"/>`;
+  const tower=`<g stroke="${INK}" stroke-width="1.3" stroke-linejoin="round">
+    <path d="M1230 150L1251 102L1272 150Z" style="fill:var(--tower)"/><path d="M1251 102V88" fill="none"/><circle cx="1251" cy="86" r="2.2" style="fill:var(--tower)"/>
+    <rect x="1228" y="148" width="46" height="6" style="fill:var(--tower)"/>
+    <rect x="1232" y="154" width="38" height="100" style="fill:var(--tower)"/>
+    <g fill="${INK}" fill-opacity=".55" stroke="none"><rect x="1238" y="160" width="6" height="18" rx="3"/><rect x="1248" y="160" width="6" height="18" rx="3"/><rect x="1258" y="160" width="6" height="18" rx="3"/></g>
+    <rect x="1229" y="182" width="44" height="4" style="fill:var(--tower)"/>
+    <circle cx="1251" cy="198" r="6.5" style="fill:var(--tower)"/><path d="M1251 194v4l3 2" fill="none" stroke-width="1"/>
+    <path d="M1240 210V250M1251 210V250M1262 210V250" fill="none" stroke-opacity=".35"/>
+  </g>`;
+  const hallDetail=`<g stroke="${INK}" stroke-width="1.4" stroke-linejoin="round">
+    <g fill="url(#dotsL)" stroke="none">${rows.slice(0,2).map(([y,h],r)=>`<rect x="${X0}" y="${y+h}" width="${X1-X0}" height="${rows[r+1][0]-y-h}"/>`).join('')}</g>
+    <g stroke="none">${blinds}</g>
+    <g style="fill:var(--facade)">${piers.join('')}</g>
+    <g style="fill:var(--facade)"><rect x="360" y="226" width="86" height="20"/><rect x="456" y="236" width="28" height="10"/><rect x="960" y="222" width="116" height="24"/><rect x="1100" y="232" width="40" height="14"/></g>
+    <g fill="url(#dotsL)" stroke="none"><rect x="360" y="226" width="86" height="20"/><rect x="960" y="222" width="116" height="24"/></g>
+    <path d="M976 228h84M976 234h84M976 240h84" stroke-opacity=".35" fill="none"/><path d="M700 246v-16h6v16M712 246v-10" fill="none"/>
+    <rect x="${door.x-22}" y="436" width="${door.w+44}" height="14" fill="#003262"/><text x="${door.x+door.w/2}" y="446.5" text-anchor="middle" font-family="Nunito, system-ui, sans-serif" font-weight="800" font-size="9.5" letter-spacing="3" fill="#fff" stroke="none">JACOBS HALL</text>
+    <path d="M${door.x-14} 446V516M${door.x+door.w+14} 446V516" fill="none"/>
+    <rect x="${door.x-10}" y="524" width="${door.w+20}" height="6" style="fill:var(--facade)"/><rect x="${door.x-22}" y="530" width="${door.w+44}" height="6" style="fill:var(--facade)"/><rect x="${door.x-34}" y="536" width="${door.w+68}" height="6" style="fill:var(--facade)"/>
+    
+  </g>`;
+  const bench=(x,y,w)=>`<g stroke="${INK}" stroke-width="1.4" stroke-linejoin="round"><ellipse cx="${x+w/2}" cy="${y+16}" rx="${w*.55}" ry="5" fill="${INK}" fill-opacity=".1" stroke="none"/><path d="M${x+8} ${y}v16M${x+w-8} ${y}v16M${x+8} ${y-4}v-22M${x+w-8} ${y-4}v-22" fill="none"/><rect x="${x}" y="${y-30}" width="${w}" height="9" rx="2" style="fill:var(--c2)"/><rect x="${x-4}" y="${y-6}" width="${w+8}" height="8" rx="2" style="fill:var(--c2)"/><path d="M${x+4} ${y-26}h${w-8}" stroke="#fff" stroke-opacity=".3" fill="none"/></g>`;
+  const planter=(x,y,w)=>`<g><g class="leaf">${[...Array(7)].map((_,i)=>`<circle cx="${x+10+i*(w-20)/6}" cy="${y-6-(i%2)*6}" r="${12+(i%3)*3}"/>`).join('')}</g><g fill="url(#fineDots)">${[...Array(4)].map((_,i)=>`<circle cx="${x+18+i*(w-30)/3}" cy="${y-2}" r="10"/>`).join('')}</g><rect x="${x}" y="${y}" width="${w}" height="24" style="fill:var(--c1)" stroke="${INK}" stroke-width="1.4"/><rect x="${x}" y="${y}" width="${w}" height="24" fill="url(#dotsL)"/><path d="M${x} ${y+5}h${w}" stroke="${INK}" stroke-opacity=".3"/></g>`;
+  const bike=(x,y,col)=>`<g fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="${x}" cy="${y}" r="17" stroke="${INK}" stroke-width="1.6"/><circle cx="${x+48}" cy="${y}" r="17" stroke="${INK}" stroke-width="1.6"/><path d="M${x} ${y}l20-24h22l6 24M${x+20} ${y-24}l6 24H${x}M${x+26} ${y}l16-24" style="stroke:${col}" stroke-width="2.6"/><path d="M${x+16} ${y-30}h10M${x+42} ${y-24}l-3-8h8" stroke="${INK}" stroke-width="2"/></g>`;
+  const rack=`<g fill="none" stroke="${INK}" stroke-width="2.2" stroke-linecap="round">${[0,1,2].map(i=>`<path d="M${1452+i*44} 666v-30a12 12 0 0 1 24 0v30"/>`).join('')}</g>`;
+  const lamp=(x,y)=>`<g><ellipse cx="${x}" cy="${y}" rx="14" ry="4" fill="${INK}" fill-opacity=".14"/><path d="M${x} ${y}V${y-176}h22" fill="none" style="stroke:var(--c4)" stroke-width="2.6" stroke-linecap="round"/><rect x="${x+12}" y="${y-180}" width="26" height="6" rx="3" style="fill:var(--c4)"/></g>`;
+  const leaves=[...Array(46)].map(()=>{const x=rnd(0,1600),y=rnd(560,890);return `<ellipse cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" rx="${rnd(2.5,4.5).toFixed(1)}" ry="1.6" transform="rotate(${rnd(0,180).toFixed(0)} ${x.toFixed(0)} ${y.toFixed(0)})" style="fill:var(${Math.random()<.5?'--c2':'--c3'})" opacity=".55"/>`}).join('');
+  const grates=[[60,592,34],[1550,598,34],[215,588,22],[1400,590,22]].map(([x,y,r])=>`<ellipse cx="${x}" cy="${y}" rx="${r}" ry="${r*.24}" fill="none" stroke="${INK}" stroke-opacity=".45" stroke-width="1.2"/><ellipse cx="${x}" cy="${y}" rx="${r*.7}" ry="${r*.17}" fill="none" stroke="${INK}" stroke-opacity=".3"/>`).join('');
+  const ripples=[...Array(26)].map(()=>{const x=rnd(40,1560),y=rnd(560,880);return `<ellipse class="rip" cx="${x.toFixed(0)}" cy="${y.toFixed(0)}" rx="${rnd(10,18).toFixed(0)}" ry="3.5" fill="none" stroke="#fff" stroke-width="1.2" style="animation-delay:-${rnd(0,1.8).toFixed(2)}s"/>`}).join('');
+  const birds=[[0,214,1],[40,208,.8],[70,222,.9],[900,210,.7],[930,218,.6]].map(([x,y,s],i)=>`<g class="bird" style="animation-delay:-${i*7}s"><path transform="translate(${x} ${y}) scale(${s})" d="M0 0q7-7 14 0q7-7 14 0" fill="none" stroke="${INK}" stroke-width="1.6" stroke-linecap="round"/></g>`).join('');
+  svg.innerHTML=`<defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop id="s0" offset="0"/><stop id="s1" offset=".55"/><stop id="s2" offset="1"/></linearGradient>
+    <linearGradient id="plaza" x1="0" y1="0" x2="0" y2="1"><stop id="p0" offset="0"/><stop id="p1" offset="1"/></linearGradient>
+    <linearGradient id="wet" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".0"/><stop offset=".3" stop-color="#fff" stop-opacity=".22"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <pattern id="fineDots" width="6" height="6" patternUnits="userSpaceOnUse"><circle cx="1.5" cy="1.5" r="1" fill="${INK}" fill-opacity=".22"/><circle cx="4.5" cy="4.5" r="1" fill="${INK}" fill-opacity=".22"/></pattern>
+     <pattern id="blinds" width="6" height="4" patternUnits="userSpaceOnUse"><rect width="6" height="4" style="fill:var(--c0)" fill-opacity=".9"/><path d="M0 3.5h6" stroke="${INK}" stroke-opacity=".25" stroke-width=".8"/></pattern>
+    <pattern id="umbDots" width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="5" cy="5" r="4" fill="#fff"/><circle cx="16" cy="16" r="4" fill="#fff"/></pattern>
+    <pattern id="dotsL" width="5" height="5" patternUnits="userSpaceOnUse"><circle cx="2.5" cy="2.5" r=".8" fill="${INK}" fill-opacity=".13"/></pattern>
+    <linearGradient id="shade" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff"/></linearGradient>
+    <mask id="shadeMask"><rect x="${X0}" y="260" width="${X1-X0}" height="260" fill="url(#shade)"/></mask>
+    <linearGradient id="reflFade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".5"/><stop offset=".6" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <clipPath id="bodyClip"><path d="${BASE.body}"/></clipPath>
+    <radialGradient id="sunGlow"><stop offset="0" style="stop-color:var(--sun,#fff3d1)" stop-opacity=".9"/><stop offset=".25" style="stop-color:var(--sun,#fff3d1)" stop-opacity=".45"/><stop offset="1" style="stop-color:var(--sun,#fff3d1)" stop-opacity="0"/></radialGradient>
+    <radialGradient id="wash"><stop offset="0" style="stop-color:var(--wash,#ffe08a)" stop-opacity=".75"/><stop offset=".45" style="stop-color:var(--wash,#ffe08a)" stop-opacity=".25"/><stop offset="1" style="stop-color:var(--wash,#ffe08a)" stop-opacity="0"/></radialGradient>
+    <radialGradient id="warm"><stop offset="0" stop-color="#f5c86a" stop-opacity=".35"/><stop offset="1" stop-color="#f5c86a" stop-opacity="0"/></radialGradient>
+    <filter id="soft" x="-20%" y="-50%" width="140%" height="200%"><feGaussianBlur stdDeviation="14"/></filter>
+    <linearGradient id="cone" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f5c86a" stop-opacity=".4"/><stop offset="1" stop-color="#f5c86a" stop-opacity="0"/></linearGradient>
+    <filter id="bloom"><feGaussianBlur stdDeviation="6"/></filter>
+    <filter id="grain"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .55 0"/></filter>
+  </defs>
+  <rect width="1600" height="900" fill="url(#sky)"/>
+  <g id="stars" class="layer" fill="#fff">${[...Array(70)].map(()=>`<circle class="star" cx="${rnd(0,1600).toFixed(0)}" cy="${rnd(0,300).toFixed(0)}" r="${rnd(.6,1.6).toFixed(1)}" opacity="${rnd(.4,.9).toFixed(2)}" style="animation-delay:-${rnd(0,4).toFixed(1)}s"/>`).join('')}</g>
+  <g id="sun" class="layer"><circle r="260" fill="url(#sunGlow)"/><circle id="sunDisc" r="30" fill="#fff8e6" opacity=".95"/></g>
+  <g id="moon" class="layer" transform="translate(1230 140)"><circle r="110" fill="#cfd8ea" opacity=".12" filter="url(#soft)"/><path d="M8-26A27 27 0 1 0 26 10 21 21 0 0 1 8-26Z" fill="#f3efe4"/></g>
+  <g id="clouds" class="layer" filter="url(#soft)">
+    <g class="drift"><ellipse cx="300" cy="170" rx="260" ry="34"/><ellipse cx="380" cy="150" rx="140" ry="30"/></g>
+    <g class="drift" style="animation-delay:-20s"><ellipse cx="1100" cy="110" rx="300" ry="30"/><ellipse cx="1000" cy="95" rx="140" ry="26"/></g>
+    <g class="extra"><g class="drift" style="animation-delay:-35s"><ellipse cx="700" cy="60" rx="420" ry="46"/><ellipse cx="1400" cy="230" rx="260" ry="36"/><ellipse cx="200" cy="60" rx="300" ry="40"/><ellipse cx="900" cy="210" rx="320" ry="30"/></g></g>
+  </g>
+  <g id="birds" class="layer">${birds}</g>
+  <g id="hills">${hills}</g>${tower}
+  <g id="hall" stroke="${INK}" stroke-width="1.6" stroke-linejoin="round">
+    <rect x="${X0-20}" y="246" width="${X1-X0+40}" height="16" style="fill:var(--facade)"/>
+    <rect x="${X0}" y="262" width="${X1-X0}" height="258" style="fill:var(--facade)"/>
+    <line x1="${X0}" y1="282" x2="${X1}" y2="282" opacity=".6"/>
+    ${rows.map(([y,h])=>`<line x1="${X0}" y1="${y+h+9}" x2="${X1}" y2="${y+h+9}" opacity=".5"/>`).join('')}
+    <g style="fill:var(--glass)" stroke-width="1.2">${winRects('w')}</g>
+    <g stroke="none" fill="#fff" opacity=".28">${wins.map(w=>`<path d="M${(w.x+2).toFixed(1)} ${w.y+w.h-4}L${(w.x+w.w-2).toFixed(1)} ${w.y+6}V${w.y+20}L${(w.x+10).toFixed(1)} ${w.y+w.h-4}Z"/>`).join('')}</g>
+    <rect x="${X0}" y="262" width="${X1-X0}" height="258" fill="url(#dotsL)" stroke="none" mask="url(#shadeMask)"/>
+    <rect x="${X0+20+11*cw}" y="452" width="${4*cw-6}" height="68" style="fill:var(--glass)"/>
+    <line x1="${X0+20+13*cw-3}" y1="452" x2="${X0+20+13*cw-3}" y2="520"/>
+    <rect x="${X0-30}" y="516" width="${X1-X0+60}" height="8" style="fill:var(--facade)"/>
+  </g>
+  ${hallDetail}
+  <rect y="520" width="1600" height="380" fill="url(#plaza)"/>
+  <g stroke="${INK}" stroke-opacity=".13" stroke-width="1.2">${pav.join('')}</g>
+  <rect y="520" width="1600" height="380" fill="url(#dotsL)" opacity=".35"/>
+  <path d="M0 610H1600" stroke="${INK}" stroke-opacity=".18" stroke-width="2" stroke-dasharray="2 6"/>
+  <g id="leaves">${leaves}</g>${grates}
+  <g id="wetG" class="layer"><g>${ripples}</g><rect y="520" width="1600" height="380" fill="url(#wet)"/><g id="hallRefl" transform="translate(0 1044) scale(1 -1)" opacity=".12"><rect x="${X0}" y="262" width="${X1-X0}" height="258" style="fill:var(--glass)"/></g></g>
+  <g id="trees">${treeMass(60,300,200)}${treeMass(1550,290,210)}${treeMass(215,470,80)}${treeMass(1400,480,74)}</g>
+  <g id="furniture">${planter(612,548,124)}${planter(930,548,124)}${bench(400,610,112)}${bench(1180,606,112)}${rack}${bike(1470,668,'var(--c4)')}${lamp(470,592)}${lamp(1150,590)}</g>
+  <rect id="tint" width="1600" height="900" style="mix-blend-mode:multiply" class="layer"/>
+  <rect id="dim" width="1600" height="900" fill="#9aa4ae" style="mix-blend-mode:multiply" class="layer"/>
+  <g id="hallLights" class="layer">
+    <g filter="url(#bloom)" fill="#f5c86a" opacity=".55">${winRects('l',i=>lit[i]?'':'opacity="0"')}</g>
+    <g fill="#f7d68f" stroke="${INK}" stroke-width="1.2">${winRects('l2',i=>lit[i]?'':'opacity="0"')}</g>
+    <rect x="${X0+20+11*cw}" y="452" width="${4*cw-6}" height="68" fill="#f9e2ae" stroke="${INK}" stroke-width="1.6"/>
+  </g>
+  <g id="moreLights" class="layer">
+    <g fill="${INK}" fill-opacity=".42">${interiors}</g>
+    <g fill="#f5c86a" opacity=".7"><rect x="1238" y="160" width="6" height="18" rx="3"/><rect x="1248" y="160" width="6" height="18" rx="3"/><rect x="1258" y="160" width="6" height="18" rx="3"/></g>
+    <rect x="${X0+10}" y="524" width="${X1-X0-20}" height="70" fill="#f5c86a" opacity=".13" filter="url(#soft)"/>
+    ${[[504,412],[1184,410]].map(([x,y])=>`<path d="M${x-10} ${y+6}L${x-90} ${y+186}H${x+90}L${x+10} ${y+6}Z" fill="url(#cone)" opacity=".5"/><ellipse cx="${x}" cy="${y+186}" rx="110" ry="22" fill="url(#warm)"/><circle cx="${x}" cy="${y+3}" r="16" fill="#f5c86a" opacity=".5" filter="url(#bloom)"/><rect x="${x-13}" y="${y}" width="26" height="6" rx="3" fill="#ffe6a8"/>`).join('')}
+  </g>
+  <g id="pools" class="layer"><ellipse cx="800" cy="560" rx="360" ry="40" fill="url(#warm)"/></g>
+  <g id="fog" class="layer" filter="url(#soft)" style="fill:var(--c0)">
+    <g class="drift"><rect x="-200" y="420" width="2000" height="70" rx="35" opacity=".75"/></g>
+    <g class="drift" style="animation-delay:-25s"><rect x="-300" y="300" width="1300" height="60" rx="30" opacity=".55"/><rect x="900" y="360" width="1000" height="50" rx="25" opacity=".5"/></g>
+    <rect x="-100" y="520" width="1800" height="120" rx="60" opacity=".45"/>
+  </g>
+  <circle id="sunwash" class="layer" r="1100" fill="url(#wash)" style="mix-blend-mode:screen;pointer-events:none"/>
+  <g id="bears"></g>
+  <g id="rain" class="layer" stroke="#fff" stroke-width="1.4" stroke-linecap="round" opacity=".5">${drops}</g>
+  <g id="bubbles"></g>
+  <rect width="1600" height="900" filter="url(#grain)" opacity=".035" style="mix-blend-mode:multiply;pointer-events:none"/>`;
+}
+
+const state={t:'day',w:'clear',auto:false};
+function bearTop(p){return p.y-(286-(p.hat==='tophat'?14:p.hat?60:72))*(p.h/300)}
+
+function renderBears(){
+  const g=svg.querySelector('#bears'),umb=state.w==='rain',night=state.t==='night';
+  g.innerHTML=[...PEOPLE].sort((a,b)=>a.y-b.y).map((p,i)=>{const s=p.h/300,tr=`translate(${p.x-100*s} ${p.y-286*s}) scale(${s})`;
+    const R=PAL[state.t].ramp,st0=UMB_STYLES[(p.slot??PEOPLE.indexOf(p))%UMB_STYLES.length];const art=bearSVG(p,{umbrella:umb?{...st0,a:state.t==='night'?'#3b6a95':R[4],b:state.t==='night'?'#6b9bc1':R[3]}:false,badges:false});
+    const refl=umb?`<g transform="translate(${p.x-100*s} ${p.y+286*s-10}) scale(${s} ${-s})" opacity=".16">${art}</g>`:'';
+    const dir={morning:1,day:.15,evening:-1,night:0}[state.t],sh=(state.w==='clear'?1:state.w==='cloudy'?.45:0)*(dir?1:0);
+    const lshadow=sh?`<ellipse cx="${(p.x+dir*p.h*.34).toFixed(1)}" cy="${(p.y-3).toFixed(1)}" rx="${(p.h*(Math.abs(dir)>.5?.42:.2)).toFixed(1)}" ry="${(p.h*.05).toFixed(1)}" fill="${INK}" opacity="${(.14*sh).toFixed(2)}"/>`:'';
+    return `${lshadow}${refl}<g data-id="${p.id}" transform="${tr}"><g class="popw">${night||state.t==='evening'?`<ellipse cx="100" cy="282" rx="110" ry="34" fill="url(#warm)"/>`:''}<g class="bob" style="animation-delay:-${(i*.61).toFixed(2)}s">${art}</g></g></g>${tag(p)}`}).join('');
+}
+
+function tag(p){
+  const n=p.skills.length,u=24,w=n*u+14,h=26,x=p.x-w/2,y=p.y+6;
+  return `<g transform="translate(${x} ${y})"><rect width="${w}" height="${h}" rx="13" fill="#fbfaf7" fill-opacity=".92" stroke="${INK}" stroke-opacity=".55" stroke-width="1.2"/>${p.skills.map((k,i)=>`<g transform="translate(${7+u/2+i*u} ${h/2}) scale(.62)">${ICON[k]}</g>`).join('')}</g>`;
+}
+function bubble(p,text){
+  const fs=p.h>180?24:21;
+  return `<g class="bub off" data-id="${p.id}" data-fs="${fs}"><path fill="#fbfaf7" stroke="${INK}" stroke-width="2" stroke-linejoin="round"/><text text-anchor="middle" font-family="Nunito, system-ui, sans-serif" font-weight="700" font-size="${fs}" fill="${INK}">${text.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</text></g>`;
+}
+function layoutBubble(g){
+  const p=PEOPLE.find(q=>q.id===g.dataset.id),fs=+g.dataset.fs,t=g.querySelector('text');
+  const w=Math.ceil(t.getComputedTextLength())+fs*1.4,h=fs*1.9,r=h/2;
+  const top=state.w==='rain'?p.y-(286+82)*(p.h/300):bearTop(p);
+  const x=Math.max(16,Math.min(1584-w,p.x-w/2)),y=top-h-16,tx=Math.max(x+r,Math.min(x+w-r,p.x));
+  t.setAttribute('x',x+w/2);t.setAttribute('y',y+h/2+fs*.36);
+  g.querySelector('path').setAttribute('d',`M${x+r} ${y}H${x+w-r}A${r} ${r} 0 0 1 ${x+w-r} ${y+h}H${tx+7}L${tx} ${y+h+10}L${tx-7} ${y+h}H${x+r}A${r} ${r} 0 0 1 ${x+r} ${y}Z`);
+}
+let bubT=0;
+function cycleBubbles(first){
+  const g=svg.querySelector('#bubbles');clearTimeout(bubT);
+  const order=[...PEOPLE].sort(()=>Math.random()-.5),pick=[];if(first){const f=PEOPLE.find(p=>p.id===first);if(f)pick.push(f)}
+  for(const p of order){if(pick.length<3&&pick.every(q=>Math.abs(q.x-p.x)>280||Math.abs(q.y-p.y)>200))pick.push(p)}
+  const has=g.children.length;[...g.children].forEach(n=>n.classList.add('off'));
+  bubT=setTimeout(()=>{
+    const used=new Set();g.innerHTML=pick.map(p=>{let L=linesFor(p,state.t,state.w).filter(x=>!used.has(x));if(!L.length)L=p.skills.flatMap(k=>SAY[k].any);const line=L[Math.floor(Math.random()*L.length)];used.add(line);return bubble(p,line)}).join('');
+    g.querySelectorAll('.bub').forEach(layoutBubble);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>g.querySelectorAll('.bub').forEach(n=>n.classList.remove('off'))));
+  },has?700:0);
+}
+
+const S='fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"';
+const WXICON={
+  clear:t=>t==='night'?`<svg viewBox="0 0 24 24"><path d="M15 4a8 8 0 1 0 5 12A6.5 6.5 0 0 1 15 4Z" ${S}/></svg>`:`<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" ${S}/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4" ${S}/></svg>`,
+  cloudy:()=>`<svg viewBox="0 0 24 24"><path d="M7 18a4 4 0 0 1-.5-8A5.5 5.5 0 0 1 17 9a4.5 4.5 0 0 1 0 9Z" ${S}/></svg>`,
+  rain:()=>`<svg viewBox="0 0 24 24"><path d="M7 15a4 4 0 0 1-.5-8A5.5 5.5 0 0 1 17 6a4.5 4.5 0 0 1 0 9Z" ${S}/><path d="M8 18l-1 3M12 18l-1 3M16 18l-1 3" ${S}/></svg>`,
+  fog:()=>`<svg viewBox="0 0 24 24"><path d="M4 8h14M6 12h14M4 16h12M8 20h10" ${S}/></svg>`
+};
+
+function apply(){
+  const {t,w}=state,P=PAL[t];
+  document.body.className=t+(document.body.classList.contains('clean')?' clean':'')+(document.body.classList.contains('ready')?' ready':'');
+  const k={clear:0,cloudy:.35,rain:.5,fog:.62}[w],mx=(c,f=1)=>mixHex(c,P.fogTo,Math.min(1,k*f));
+  ['s0','s1','s2'].forEach((id,i)=>svg.querySelector('#'+id).setAttribute('stop-color',mx(P.sky[i])));
+  svg.querySelector('#p0').setAttribute('stop-color',mx(P.plaza[0],.4));svg.querySelector('#p1').setAttribute('stop-color',mx(P.plaza[1],.4));
+  P.ramp.forEach((c,i)=>svg.style.setProperty('--c'+i,mx(c,i<2?.3:.55)));
+  svg.style.setProperty('--facade',t==='night'?mx(P.ramp[1],.3):t==='day'?'#fffcf2':'#ffffff');svg.style.setProperty('--glass',mx(P.glass,.4));
+  svg.style.setProperty('--hill2',mx(P.ramp[1],1.2));svg.style.setProperty('--hill1',mx(P.ramp[2],1.1));svg.style.setProperty('--tower',t==='night'?mx(P.ramp[0],.6):mx(P.ramp[0],.8));
+  svg.querySelectorAll('.leaf').forEach(l=>l.setAttribute('fill',mx(P.ramp[3],.5)));
+  svg.querySelector('#tint').style.opacity=0;svg.querySelector('#dim').style.opacity=0;
+  const sw=svg.querySelector('#sunwash');sw.setAttribute('cx',P.sun[0]);sw.setAttribute('cy',P.sun[1]);svg.style.setProperty('--wash',P.wash||'#ffe08a');sw.style.opacity=P.wash?({clear:1,cloudy:.45,rain:.15,fog:.5}[w]):0;
+  const sun=svg.querySelector('#sun');sun.setAttribute('transform',`translate(${P.sun[0]} ${P.sun[1]})`);svg.style.setProperty('--sun',P.sun[2]);
+  sun.style.opacity=t==='night'?0:w==='rain'?.15:w==='cloudy'?.4:w==='fog'?.55:1;
+  const cl=svg.querySelector('#clouds');cl.setAttribute('fill',t==='night'?P.ramp[0]:mixHex(P.ramp[0],'#ffffff',.5));
+  cl.style.opacity=w==='clear'?(t==='night'?.25:.6):.95;cl.querySelector('.extra').style.opacity=(w==='cloudy'||w==='rain')?1:0;
+  svg.querySelector('#hallLights').style.opacity=(t==='night'||t==='evening')?1:0;
+  svg.querySelector('#moreLights').style.opacity=t==='night'?1:t==='evening'?.7:0;
+  svg.querySelector('#birds').style.opacity=(t==='morning'||t==='day')&&(w==='clear'||w==='cloudy')?1:0;
+  svg.querySelector('#leaves').style.opacity=w==='rain'?.5:1;
+  svg.querySelector('#pools').style.opacity=t==='night'?1:t==='evening'?.6:0;
+  svg.querySelector('#moon').style.opacity=t==='night'&&w!=='rain'?1:0;
+  svg.querySelector('#stars').style.opacity=t==='night'?(w==='clear'?1:w==='cloudy'?.25:0):0;
+  svg.querySelector('#fog').style.opacity=w==='fog'?(t==='night'?.45:1):0;
+  svg.querySelector('#rain').style.opacity=w==='rain'?(t==='night'?.35:.55):0;
+  svg.querySelector('#wetG').style.opacity=w==='rain'?1:0;
+  recast();
+  
+  document.getElementById('wx').innerHTML=WXICON[w](t)+`<span>${W_WORD[w]} ${T_WORD[t]}</span>`;
+  document.querySelectorAll('#segTime button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.t===t));
+  document.querySelectorAll('#segWx button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.w===w));
+  document.getElementById('autoBtn').setAttribute('aria-pressed',state.auto);
+  const h=state.auto?'auto':`${t}-${w}`;if(location.hash.slice(1)!==h)history.replaceState(null,'','#'+h);
+  try{localStorage.setItem('blo.proj',JSON.stringify(state))}catch(e){}
+}
+
+function clockTime(){const hr=new Date().getHours();return hr>=5&&hr<10?'morning':hr>=10&&hr<17?'day':hr>=17&&hr<20?'evening':'night'}
+function tick(){
+  let txt=new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}).toLowerCase();
+  if(!state.auto)txt={morning:'8:15 am',day:'2:30 pm',evening:'6:40 pm',night:'11:20 pm'}[state.t];
+  document.getElementById('clock').textContent=txt;
+  if(state.auto){const t=clockTime();if(t!==state.t){state.t=t;apply()}}
+}
+function fromHash(){
+  const h=location.hash.slice(1);
+  if(h==='auto'){state.auto=true;state.t=clockTime();return true}
+  const m=h.match(/^(morning|day|evening|night)-(clear|cloudy|rain|fog)$/);
+  if(m){state.auto=false;state.t=m[1];state.w=m[2];return true}
+  return false;
+}
+let stash=24;
+function bumpStash(){
+  if(stash>=100)return;stash=Math.min(100,stash+(Math.random()<.5?1:5));
+  document.getElementById('stashTxt').textContent=stash;document.getElementById('stashBar').style.width=stash+'%';
+  const ws=svg.querySelectorAll('#bears .popw'),w=ws[Math.floor(Math.random()*ws.length)];
+  if(w){w.classList.remove('pop');void w.getBBox();w.classList.add('pop')}
+}
+
+const SK=SKILLS.map(k=>[k.id,k.label]);
+const KIND2SKILL={};SKILLS.forEach(k=>{KIND2SKILL[k.kind]=k.id;KIND2SKILL[k.id]=k.id});
+const SKLABEL=Object.fromEntries(SKILLS.map(k=>[k.id,k.label]));
+const TICKS=['Basil pumped up a flat by the bike racks · 4 min ago','Spokes brought a bandage to Moffitt · 12 min ago','Remy put a bike chain back on, Jacobs steps · 18 min ago','Wren tightened a wobbly desk leg in Wurster · 30 min ago'];
+const events=[];let ti=0;const tickEl=document.getElementById('tick');
+function tickText(){const live=!PEOPLE.some(p=>p.sample);if(events.length)return events[ti%events.length];return live?'Scan the code to add your bear':TICKS[ti%TICKS.length]}
+function pushEvent(t){events.unshift(t+' · just now');events.length=Math.min(events.length,6);ti=0;tickEl.classList.add('off');setTimeout(()=>{tickEl.textContent=tickText();tickEl.classList.remove('off')},400)}
+tickEl.textContent=tickText();
+setInterval(()=>{tickEl.classList.add('off');setTimeout(()=>{ti++;tickEl.textContent=tickText();tickEl.classList.remove('off')},600)},8000);
+function renderLegend(list){document.getElementById('skills').innerHTML=SK.map(([k,l])=>{const n=list.filter(p=>p.skills.includes(k)).length;return n?`<span><svg viewBox="-14 -14 28 28">${ICON[k].replace(/#003262/g,'currentColor')}</svg>${l} <b>${n}</b></span>`:''}).join('')}
+
+/* ── live people from phones (same MQTT room as live.js) ── */
+const msgs={},slotOf={};let firstLive=true;
+function hashPick(id,arr){let h=0;for(const c of id)h=(h*31+c.charCodeAt(0))>>>0;return arr[h%arr.length]}
+function isLive(d){return !!(d&&typeof d==='object'&&Array.isArray(d.k)&&d.k.length&&(!d.until||d.until>Date.now()))}
+function toBear(id,d){const b=d.bear||{},O=window.BEAR.OPTIONS;
+  const skills=[...new Set(d.k.map(k=>KIND2SKILL[k]).filter(Boolean))].slice(0,2);
+  return {id,live:true,bear:O.bear.includes(b.b)?b.b:hashPick(id,O.bear),hat:O.hat.includes(b.h)?b.h:hashPick(id+'h',O.hat),neck:O.neck.includes(b.nk)?b.nk:hashPick(id+'n',O.neck),face:O.face.includes(b.f)?b.f:hashPick(id+'f',O.face),skills:skills.length?skills:['fixit']}}
+function realPeople(){const shown=[],quiet=[];for(const [id,d] of Object.entries(msgs)){if(!isLive(d))continue;(d.show?shown:quiet).push(toBear(id,d))}return {shown,quiet}}
+function recast(newId){
+  const {shown,quiet}=realPeople();
+  for(const id of Object.keys(slotOf))if(!shown.find(p=>p.id===id))delete slotOf[id];
+  const used=new Set(Object.values(slotOf));
+  shown.sort((a,b)=>(msgs[a.id].ts||0)-(msgs[b.id].ts||0));
+  const placed=[];for(const p of shown){if(slotOf[p.id]==null){const free=SLOTS.findIndex((_,i)=>!used.has(i));if(free<0)continue;slotOf[p.id]=free;used.add(free)}placed.push({...p,slot:slotOf[p.id],...SLOTS[slotOf[p.id]]})}
+  const samples=(DEMO||!placed.length)?SAMPLE.filter(s=>!placed.some(p=>p.slot===SAMPLE.indexOf(s))).map((s,i)=>({...s,slot:SAMPLE.indexOf(s)})):[];
+  PEOPLE=[...placed,...samples];
+  const real=[...shown,...quiet],counted=placed.length||quiet.length?real:samples;
+  renderLegend(counted);
+  document.getElementById('quiet').textContent=quiet.length;
+  document.getElementById('sampleNote').hidden=!samples.length;
+  document.getElementById('stashTxt').textContent=Math.min(100,23+seen.size);document.getElementById('stashBar').style.width=Math.min(100,23+seen.size)+'%';
+  headline(counted.length);
+  renderBears();
+  if(newId){const g=svg.querySelector(`#bears [data-id="${newId}"] .popw`);if(g){g.classList.add('pop')}cycleBubbles(newId)}else cycleBubbles();
+}
+const seen=new Set(JSON.parse((()=>{try{return localStorage.getItem('blo-bear-seen')||'[]'}catch(e){return '[]'}})()));
+function onPerson(id,d){
+  const prev=msgs[id];
+  if(d&&prev&&(prev.ts||0)>=(d.ts||0))return;           // same message from the second broker
+  if(!d&&!prev)return;
+  const was=isLive(prev)&&prev.show,wasQ=isLive(prev)&&!prev.show;
+  if(d)msgs[id]=d;else delete msgs[id];
+  const now=isLive(d)&&d.show,nowQ=isLive(d)&&!d.show;
+  if(isLive(d)){seen.add(id);try{localStorage.setItem('blo-bear-seen',JSON.stringify([...seen].slice(-300)))}catch(e){}}
+  const sk=d&&isLive(d)?toBear(id,d).skills.map(k=>SKLABEL[k]).join(' + '):'';
+  if(now&&!was)pushEvent('A new bear checked in · '+sk);
+  else if(nowQ&&!wasQ)pushEvent('Someone is helping quietly · '+sk);
+  else if((was||wasQ)&&!now&&!nowQ)pushEvent('A bear headed out · thanks for helping');
+  recast(now&&!was?id:null);
+}
+function headline(n){const {t,w}=state;document.getElementById('headline').textContent=n?`${W_WORD[w]} ${T_WORD[t]}. ${n} ${n===1?'person':'people'} nearby can lend a hand.`:`${W_WORD[w]} ${T_WORD[t]}. Be the first to check in.`}
+
+/* QR code to the phone page (keeps ?room=) */
+function drawQR(){try{const u=new URL('bear-join.html',location.href);u.search=location.search.replace(/([?&])demo(=[^&]*)?&?/,'$1').replace(/[?&]$/,'');
+  const q=qrcode(0,'M');q.addData(u.href);q.make();const n=q.getModuleCount();let r='';for(let y=0;y<n;y++)for(let x=0;x<n;x++)if(q.isDark(y,x))r+=`M${x} ${y}h1v1h-1z`;
+  document.getElementById('qr').innerHTML=`<svg viewBox="0 0 ${n} ${n}" shape-rendering="crispEdges"><path d="${r}" fill="#141414"/></svg>`;document.getElementById('qr').title=u.href}catch(e){document.getElementById('qr').textContent='QR unavailable'}}
+build();
+try{const s=JSON.parse(localStorage.getItem('blo.proj')||'null');if(s&&!location.hash)Object.assign(state,s)}catch(e){}
+fromHash();if(state.auto)state.t=clockTime();
+apply();tick();requestAnimationFrame(()=>requestAnimationFrame(()=>document.body.classList.add('ready')));
+setInterval(tick,15000);setInterval(()=>cycleBubbles(),7000);setInterval(()=>recast(),30000);
+drawQR();
+if(new URLSearchParams(location.search).has('test'))window.__onPerson=onPerson;
+const lt=document.getElementById('liveTxt'),ld=document.getElementById('liveDot');
+if(window.BLO&&window.mqtt){BLO.connect({subscribe:true,onStatus:(up)=>{lt.textContent='Jacobs Hall courtyard · '+(up?'live':'connecting…');ld.classList.toggle('off',!up)},onMessage:onPerson})}else{lt.textContent='Jacobs Hall courtyard · offline';ld.classList.add('off')}
+if(document.fonts)document.fonts.ready.then(()=>svg.querySelectorAll('#bubbles .bub').forEach(layoutBubble));
+
+const panel=document.getElementById('panel'),ctlBtn=document.getElementById('ctlBtn');
+ctlBtn.addEventListener('click',()=>{panel.hidden=!panel.hidden;ctlBtn.setAttribute('aria-expanded',!panel.hidden)});
+document.getElementById('segTime').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;state.auto=false;state.t=b.dataset.t;apply();tick()});
+document.getElementById('segWx').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;state.w=b.dataset.w;apply()});
+document.getElementById('autoBtn').addEventListener('click',()=>{state.auto=!state.auto;if(state.auto)state.t=clockTime();apply();tick()});
+const clean=()=>{document.body.classList.toggle('clean');panel.hidden=true;ctlBtn.setAttribute('aria-expanded','false')};
+document.getElementById('cleanBtn').addEventListener('click',()=>{clean();try{document.documentElement.requestFullscreen?.().catch(()=>{})}catch(e){}});
+window.addEventListener('hashchange',()=>{if(fromHash()){apply();tick()}});
+document.addEventListener('keydown',e=>{
+  if(e.metaKey||e.ctrlKey||e.altKey)return;const k=e.key.toLowerCase();
+  const T={'1':'morning','2':'day','3':'evening','4':'night'},Wk={q:'clear',w:'cloudy',e:'rain',r:'fog'};
+  if(T[k]){state.auto=false;state.t=T[k];apply();tick()}
+  else if(Wk[k]){state.w=Wk[k];apply()}
+  else if(k==='a'){state.auto=!state.auto;if(state.auto)state.t=clockTime();apply();tick()}
+  else if(k==='h')clean();
+  else if(k==='f'){try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen().catch(()=>{})}catch(err){}}
+});
+}
+</script>
+</body>
+</html>
